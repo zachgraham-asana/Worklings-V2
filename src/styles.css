@@ -1,0 +1,726 @@
+/* ── Shell ───────────────────────────────────────────────────────────────
+   Layout and control styling follow the Dash Logo Motion tool, so the two
+   read as one family: a fixed-width menu pane beside a rounded artboard,
+   both floating on the same grey.
+   ──────────────────────────────────────────────────────────────────────── */
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 16px;
+  min-height: 100vh;
+  padding: 16px;
+  background: #ced2d7;
+  font-family: 'SF Pro Text', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color: #1d1f21;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  display: contents;
+}
+
+.left-pane {
+  width: 340px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  max-height: calc(100vh - 32px);
+  padding: 24px 20px;
+  background: #f6f7f8;
+  border-radius: 20px;
+  overflow-y: auto;
+}
+
+.left-pane::-webkit-scrollbar { width: 6px; }
+.left-pane::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.18); border-radius: 3px; }
+.left-pane::-webkit-scrollbar-track { background: transparent; }
+
+.right-pane {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #f6f7f8;
+  border-radius: 20px;
+}
+
+.right-pane.is-dropping {
+  outline: 2px dashed var(--card-accent, #2e9fea);
+  outline-offset: -10px;
+}
+
+.artboard {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.artboard[hidden] {
+  display: none;
+}
+
+.loop-svg {
+  display: block;
+  overflow: visible;
+}
+
+/* ── Teammate ────────────────────────────────────────────────────────────── */
+
+.teammate {
+  /* Set from layout.js at construction — these fallbacks only apply if the
+     element is rendered outside TeammateView. */
+  --body-scale: 100%;
+  --eye-scale: 100%;
+
+  position: relative;
+}
+
+/* Body and eye plates are exported on their own padded canvases at different
+   sizes, so each is scaled against the artboard and centred, rather than both
+   filling the box. */
+.tm-body,
+.tm-eyes {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
+/* A few bodies want their eyes off dead-centre; see EYE_OFFSETS in layout.js.
+   The box is square, so one percentage works for both axes. */
+.tm-eyes {
+  left: calc(50% + var(--eye-x, 0%));
+  top: calc(50% + var(--eye-y, 0%));
+}
+
+/* The entire colour treatment, in one element.
+   Two background layers — a flat colour over the greyscale body — blended with
+   Hard Light, then clipped to the body's alpha by the mask. The blend happens
+   between this element's own background layers, so it can't leak onto the page
+   and needs no `isolation`. Everything varies through two custom properties. */
+.tm-body {
+  width: var(--body-scale);
+  height: var(--body-scale);
+  background-image:
+    linear-gradient(var(--teammate-color), var(--teammate-color)),
+    var(--body-image);
+  background-blend-mode: hard-light;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  mask-image: var(--body-image);
+  mask-position: center;
+  mask-repeat: no-repeat;
+  mask-size: contain;
+  -webkit-mask-image: var(--body-image);
+  -webkit-mask-position: center;
+  -webkit-mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+}
+
+.tm-eyes {
+  width: var(--eye-scale);
+  height: var(--eye-scale);
+  /* No filter: the drop shadow is baked into the eye PNGs. */
+  object-fit: contain;
+}
+
+.tm-eyes[hidden] {
+  display: none;
+}
+
+/* ── Workling Thinking (the Pill) ────────────────────────────────────────── */
+
+/* Figma's `Pill`: 8/12 padding, 26px radius, 3px gap, box-shadow/large —
+   whose Figma radius of 12 is a CSS blur of 12, offset 0,6.
+   The border takes `--card-accent` rather than the design's neutral hairline,
+   so the chrome picks up the Workling's colour.
+
+   The marquee is a conic gradient in the border box with the white fill
+   clipped to the padding box, so only the 1px ring shows it. This is the one
+   gradient-border technique that respects border-radius — `border-image`
+   squares off the corners. `--marquee-angle` is advanced each frame by
+   PulseView; increasing it rotates the grey band clockwise. */
+.pulse-pill {
+  --marquee-angle: 0deg;
+  --pill-accent: var(--card-accent, #745bfa);
+
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: 26px;
+  /* Wide 100° ramps either side of the grey, symmetric about 180°, so the two
+     colours spend most of the ring blending rather than switching. Narrower
+     ramps read as a hard-edged blob sliding around.
+     `in oklab` keeps the purple→grey midpoints from going muddy the way an
+     sRGB interpolation does. */
+  background:
+    linear-gradient(#fff, #fff) padding-box,
+    conic-gradient(
+        from var(--marquee-angle) in oklab,
+        var(--pill-accent) 0deg,
+        var(--pill-accent) 80deg,
+        #e0e1e3 180deg,
+        var(--pill-accent) 280deg,
+        var(--pill-accent) 360deg
+      )
+      border-box;
+  box-shadow: 0 6px 12px rgba(109, 110, 111, 0.12);
+}
+
+/* Marquee off: drop the layered background entirely and colour the border
+   directly, so it's a plain solid ring rather than a frozen gradient. */
+.pulse-pill.is-static {
+  background: #fff;
+  border-color: var(--pill-accent);
+}
+
+/* Fixed size, holding the largest the Workling can get. The pulse is a
+   transform inside this box, so the row never reflows and the text can't
+   jitter. Overshoot is allowed to spill — the pill's padding absorbs it. */
+.pulse-slot {
+  position: relative;
+  flex: none;
+  display: block;
+}
+
+.pulse-name,
+.pulse-status {
+  font-size: 14px;
+  line-height: 22px;
+  letter-spacing: -0.15px;
+  white-space: nowrap;
+}
+
+.pulse-name {
+  font-weight: 500;
+  color: #1e1f21;
+}
+
+/* Figma's `Glimmer text`: a lighter band (text-disabled) sweeping across
+   text-weak. Done as a clipped gradient rather than two masked layers. */
+.pulse-status {
+  font-weight: 400;
+  background: linear-gradient(100deg, #6d6e6f 0 40%, #afabac 50%, #6d6e6f 60% 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: pulse-glimmer 2.4s linear infinite;
+}
+
+@keyframes pulse-glimmer {
+  from { background-position: 120% 0; }
+  to { background-position: -20% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pulse-status {
+    animation: none;
+    background: none;
+    color: #6d6e6f;
+  }
+}
+
+/* ── Nav ─────────────────────────────────────────────────────────────────── */
+
+.nav-select-wrap {
+  position: relative;
+  width: 100%;
+  border-radius: 24px;
+}
+
+.nav-select-wrap::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 24px;
+  border: 1px solid rgba(0, 0, 0, 0.72);
+  mix-blend-mode: soft-light;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.nav-select-wrap::after {
+  content: '';
+  position: absolute;
+  right: 16px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 7px solid #1d1f21;
+  pointer-events: none;
+  z-index: 2;
+}
+
+select.nav-select {
+  width: 100%;
+  height: 34px;
+  padding: 0 36px 0 16px;
+  background: linear-gradient(180deg, #ffffff 21.74%, rgba(255, 255, 255, 0) 100%);
+  border: none;
+  border-radius: 24px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: -0.15px;
+  color: #1e1f21;
+  cursor: pointer;
+  appearance: none;
+  -webkit-appearance: none;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+select.nav-select:focus {
+  outline: none;
+}
+
+/* ── Controls ────────────────────────────────────────────────────────────── */
+
+.controls[hidden] {
+  display: none;
+}
+
+.controls {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  margin-bottom: 14px;
+}
+
+.lbl {
+  width: 70px;
+  flex-shrink: 0;
+  text-align: right;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: -0.15px;
+  color: #000;
+}
+
+input[type='range'] {
+  flex: 1;
+  height: 2px;
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 1px;
+  outline: none;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #1d1f21;
+  cursor: pointer;
+}
+
+input[type='range']::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  border: none;
+  border-radius: 50%;
+  background: #1d1f21;
+  cursor: pointer;
+}
+
+.readout {
+  width: 42px;
+  flex-shrink: 0;
+  text-align: right;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: -0.15px;
+  color: #000;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Collapsible sections ────────────────────────────────────────────────── */
+
+.section {
+  width: 100%;
+}
+
+.section > summary {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 100%;
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: rgba(0, 0, 0, 0.45);
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+}
+
+/* The top rule is a separator between sections, so the first one doesn't get
+   it — otherwise it reads as a stray line across the top of the panel. */
+.section:first-child > summary {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: none;
+}
+
+.section > summary::-webkit-details-marker {
+  display: none;
+}
+
+.section > summary::after {
+  content: '';
+  position: absolute;
+  right: 2px;
+  top: 60%;
+  width: 0;
+  height: 0;
+  border-left: 3.5px solid transparent;
+  border-right: 3.5px solid transparent;
+  border-top: 4px solid rgba(0, 0, 0, 0.3);
+  transform-origin: 50% 25%;
+  transition: transform 160ms ease;
+}
+
+.section[open] > summary::after {
+  transform: rotate(180deg);
+}
+
+.section > summary:focus-visible {
+  outline: none;
+  color: rgba(0, 0, 0, 0.75);
+}
+
+.section-body {
+  padding-top: 18px;
+}
+
+.sel {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.sel-trigger {
+  position: relative;
+  width: 100%;
+  height: 26px;
+  padding: 0 22px 0 10px;
+  border: none;
+  border-radius: 13px;
+  background: linear-gradient(180deg, #ffffff 21.74%, rgba(255, 255, 255, 0) 100%);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: -0.15px;
+  color: #1e1f21;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.sel-trigger::after {
+  content: '';
+  position: absolute;
+  right: 9px;
+  top: 50%;
+  margin-top: -1px;
+  width: 0;
+  height: 0;
+  border-left: 3.5px solid transparent;
+  border-right: 3.5px solid transparent;
+  border-top: 4px solid #1d1f21;
+}
+
+.sel-trigger:focus-visible {
+  outline: none;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08), 0 0 0 2px rgba(0, 0, 0, 0.22);
+}
+
+/* Fixed rather than absolute: the menu has to escape the panel's own
+   `overflow-y: auto`, which would otherwise clip it. */
+.sel-list {
+  position: fixed;
+  z-index: 100;
+  overflow-y: auto;
+  padding: 4px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow:
+    0 1px 2px rgba(28, 30, 33, 0.06),
+    0 8px 24px -6px rgba(28, 30, 33, 0.22);
+}
+
+.sel-list[hidden] {
+  display: none;
+}
+
+.sel-item {
+  padding: 5px 8px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: -0.15px;
+  color: #1e1f21;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+}
+
+.sel-item.is-active {
+  background: rgba(37, 39, 40, 0.06);
+}
+
+.sel-item.is-selected {
+  font-weight: 700;
+}
+
+.switch {
+  position: relative;
+  flex: none;
+  margin-right: auto;
+  width: 34px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.14);
+  cursor: pointer;
+  transition: background 0.18s ease;
+}
+
+.switch[aria-checked='true'] {
+  background: #1d1f21;
+}
+
+.switch .knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25);
+  transition: transform 0.18s ease;
+}
+
+.switch[aria-checked='true'] .knob {
+  transform: translateX(14px);
+}
+
+.switch:focus-visible {
+  outline: 2px solid rgba(0, 0, 0, 0.3);
+  outline-offset: 2px;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────────────────── */
+
+.pill-btn {
+  position: relative;
+  flex-shrink: 0;
+  width: 100%;
+  height: 40px;
+  padding: 0 16px;
+  border: none;
+  border-radius: 24px;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0) 21.74%, #ffffff 100%);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: -0.15px;
+  color: #1e1f21;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+
+.pill-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 24px;
+  border: 1px solid rgba(0, 0, 0, 0.72);
+  mix-blend-mode: soft-light;
+  pointer-events: none;
+}
+
+.pill-btn:hover { background: #ffffff; }
+
+.status {
+  min-height: 14px;
+  margin-top: 2px;
+  font-size: 11px;
+  line-height: 15px;
+  color: #aaa;
+  text-align: center;
+}
+
+/* ── Gallery card (Figma spec) ───────────────────────────────────────────── */
+
+.gallery-card {
+  --card-accent: #2e9fea;
+  --card-accent-rgb: 46, 159, 234;
+  /* Kept in step with DEFAULT_HOVER in GalleryCard.js — these are what the
+     card looks like before any JS runs. */
+  --hover-scale: 1.02;
+  --glow-size: 32px;
+  --glow-opacity: 0.24;
+  --hover-ease: cubic-bezier(0, 0, 0.58, 1);
+  --hover-duration: 220ms;
+
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  /* flex: none — the card is a flex item of the artboard, and would otherwise
+     shrink below the spec's 400px once the window gets narrow. */
+  flex: none;
+  width: 400px;
+  padding: 0 0 29.7944px;
+  background: #fff;
+  border: 1px solid #e0e1e3;
+  border-radius: 14.8972px;
+  outline: none;
+  cursor: pointer;
+  transition:
+    border-color var(--hover-duration) var(--hover-ease),
+    box-shadow var(--hover-duration) var(--hover-ease),
+    transform var(--hover-duration) var(--hover-ease);
+}
+
+.gallery-card.is-hovered {
+  border-color: var(--card-accent);
+  transform: translateY(-2px) scale(var(--hover-scale));
+  /* Two neutral layers for contact shadow, then the accent glow — its blur,
+     offset and inset all scale off --glow-size so one slider drives it. */
+  box-shadow:
+    0 1px 2px rgba(28, 30, 33, 0.04),
+    0 6px 16px -8px rgba(28, 30, 33, 0.14),
+    0 calc(var(--glow-size) * 0.5) var(--glow-size) calc(var(--glow-size) * -0.45)
+      rgba(var(--card-accent-rgb), var(--glow-opacity));
+}
+
+.card-head {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+  height: 104px;
+  padding: 32px 32px 24px;
+}
+
+.character-slot {
+  position: relative;
+  flex: none;
+  width: 48px;
+  height: 48px;
+}
+
+/* Drawn larger than the slot and pointer-transparent, so the character can
+   lean and scale past its box without clipping or stealing hover events. */
+.character-canvas {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.card-title {
+  font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-weight: 500;
+  font-size: 20px;
+  line-height: 28px;
+  letter-spacing: 0.38px;
+  color: #1e1f21;
+}
+
+.card-body {
+  width: 100%;
+  padding: 0 32px;
+}
+
+.card-description {
+  font-size: 16px;
+  line-height: 24px;
+  letter-spacing: -0.32px;
+  color: #6d6e6f;
+}
+
+.card-meta {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  height: 26px;
+  margin-top: 8px;
+  padding: 0 32px;
+}
+
+.tag-row {
+  display: flex;
+  flex-flow: row wrap;
+  align-items: flex-start;
+  align-content: flex-start;
+  gap: 8px;
+}
+
+.tag {
+  display: flex;
+  align-items: center;
+  height: 26px;
+  padding: 2px 8px;
+  font-size: 14px;
+  line-height: 22px;
+  letter-spacing: -0.15px;
+  color: #1d1f21;
+  white-space: nowrap;
+  background: rgba(37, 39, 40, 0.03);
+  border-radius: 4px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gallery-card {
+    transition-duration: 1ms;
+  }
+}

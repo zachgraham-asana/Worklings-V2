@@ -1,0 +1,12 @@
+node_modules
+dist
+.DS_Store
+
+# Local Claude Code permissions — machine-specific, not shared.
+.claude/settings.local.json
+
+# Source material for the exported assets: Blender scenes, PSDs and handoff
+# zips, ~389MB. Two files are over GitHub's 100MB hard limit, so this can't be
+# pushed as-is — it needs Git LFS or to live in shared storage instead. The
+# committed `_Assets/` PNGs are what the app actually loads.
+_AIT Raw assets/
